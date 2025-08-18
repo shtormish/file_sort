@@ -28,3 +28,7 @@ bld/
 # NUnit
 *.VisualState.xml
 TestResult.xml
+
+# Test data directories
+temp1/
+temp2/
