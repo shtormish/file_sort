@@ -2,6 +2,14 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+
+// Check for help request
+if (args.Length > 0 && (args[0] == "-h" || args[0] == "--help"))
+{
+    ShowHelp();
+    return 0;
+}
 
 // Check for test data setup mode
 if (args.Length == 1 && args[0] == "--setup-test-data")
@@ -145,6 +153,27 @@ else
 return 0;
 
 
+/// <summary>
+/// Displays the help screen with usage information.
+/// </summary>
+static void ShowHelp()
+{
+    var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
+
+    Console.WriteLine($"📂 File Sorter Utility v{version}");
+    Console.WriteLine("---------------------------------");
+    Console.WriteLine("A smart command-line tool to automatically organize your files.");
+    Console.WriteLine();
+    Console.WriteLine("USAGE:");
+    Console.WriteLine("  file_sort <target_folders_path> <source_files_path>");
+    Console.WriteLine();
+    Console.WriteLine("OPTIONS:");
+    Console.WriteLine("  -h, --help               Show this help screen.");
+    Console.WriteLine("  --setup-test-data        Generate test directories ('temp1', 'temp2') and files.");
+    Console.WriteLine();
+    Console.WriteLine("License: MIT");
+    Console.WriteLine("Source: https://github.com/shtormish/file_sort");
+}
 /// <summary>
 /// Finds and prints any duplicate names found among the target directories.
 /// </summary>
