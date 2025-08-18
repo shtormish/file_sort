@@ -68,7 +68,11 @@ catch (Exception ex)
 }
 
 // 4. Find and report duplicate names among target folders
-FindAndReportDuplicateNames(directoryNamesMap);
+if (!FindAndReportDuplicateNames(directoryNamesMap))
+{
+    Console.WriteLine("\nOperation aborted by user.");
+    return 0;
+}
 
 // 5. Scan source directory for files recursively and create a map
 Console.WriteLine($"\nScanning source files in: {sourceDirectory}");
@@ -144,7 +148,7 @@ return 0;
 /// <summary>
 /// Finds and prints any duplicate names found among the target directories.
 /// </summary>
-static void FindAndReportDuplicateNames(Dictionary<string, List<string>> directoryNamesMap)
+static bool FindAndReportDuplicateNames(Dictionary<string, List<string>> directoryNamesMap)
 {
     // Find duplicate names across all folders using LINQ
 var nameOccurrences = directoryNamesMap
@@ -163,7 +167,28 @@ var nameOccurrences = directoryNamesMap
                 Console.WriteLine($"  - {item.Path}");
             }
         }
+
+        Console.WriteLine("\nThis may lead to incorrect file placement during the process.");
+        Console.Write("Do you want to continue? (C = Continue, A = Abort): ");
+
+        while (true)
+        {
+            var keyInfo = Console.ReadKey(true);
+            char choice = char.ToUpper(keyInfo.KeyChar);
+
+            if (choice == 'C')
+            {
+                Console.WriteLine("Continue");
+                return true;
+            }
+            if (choice == 'A')
+            {
+                Console.WriteLine("Abort");
+                return false;
+            }
+        }
     }
+    return true; // No duplicates found, continue by default
 }
 
 /// <summary>
