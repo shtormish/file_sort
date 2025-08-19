@@ -11,6 +11,8 @@ jobs:
     name: Build and Release
     # Мы используем последнюю версию Ubuntu, так как она может собирать проект для всех платформ
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
@@ -49,8 +51,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
           # Название релиза
           name: Release ${{ github.ref_name }}
-          # Описание релиза (можно добавить автоматическую генерацию changelog)
-          body: "New release of File Sorter Utility."
+          # Включаем автоматическую генерацию release notes на основе коммитов
+          generate_release_notes: true
           # Указываем, какие файлы нужно прикрепить к релизу
           files: |
             ./file_sort-win-x64.zip
