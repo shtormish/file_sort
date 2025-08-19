@@ -295,4 +295,94 @@ public class FileSorterTests
         _uiMock.Verify(ui => ui.LogMove(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never, "No move operations should occur.");
         _uiMock.Verify(ui => ui.PrintReport(It.Is<List<(string, string)>>(l => l.Count == 0)), Times.Once, "Report should show zero moved files.");
     }
+
+    [Fact]
+    public void Run_WithMultipleExistingDuplicates_GeneratesCorrectIncrementedName()
+    {
+        // Arrange
+        var annaDir = _fileSystem.Path.Combine(TargetDir, "Anna");
+        _fileSystem.AddDirectory(annaDir);
+
+        var sourceFile = _fileSystem.Path.Combine(SourceDir, "Photo of Anna.jpg");
+        _fileSystem.AddFile(sourceFile, new MockFileData("newest photo"));
+
+        // Create a chain of existing duplicates
+        _fileSystem.AddFile(_fileSystem.Path.Combine(annaDir, "Photo of Anna.jpg"), new MockFileData("original photo"));
+        _fileSystem.AddFile(_fileSystem.Path.Combine(annaDir, "Photo of Anna_duplicate_001.jpg"), new MockFileData("first duplicate"));
+
+        // Mock user choosing to rename the file
+        _uiMock.Setup(ui => ui.ResolveConflict(It.IsAny<string>(), It.IsAny<string>()))
+               .Returns(ConflictAction.Rename);
+
+        // Act
+        _sorter.Run();
+
+        // Assert
+        // The system should find the next available slot, which is "duplicate_002".
+        var expectedRenamedFile = _fileSystem.Path.Combine(annaDir, "Photo of Anna_duplicate_002.jpg");
+        Assert.True(_fileSystem.File.Exists(expectedRenamedFile), "File should be renamed to the next available increment.");
+    }
+
+    [Fact]
+    public void Run_WhenFileMoveFails_LogsFailureAndDoesNotCrash()
+    {
+        // Arrange
+        // For this test, we need to mock IFileSystem to throw an exception,
+        // so we create a new set of mocks instead of using the class-level ones.
+        var uiMock = new Mock<IUserInterface>();
+        var fileSystemMock = new Mock<IFileSystem>();
+
+        const string annaDir = @"C:\targets\Anna";
+        const string sourceFile = @"C:\sources\Photo of Anna.jpg";
+        const string destFile = @"C:\targets\Anna\Photo of Anna.jpg";
+        const string exceptionMessage = "Disk is full.";
+
+        // Setup the mock file system to simulate a simple scenario
+        fileSystemMock.Setup(fs => fs.Directory.EnumerateDirectories(TargetDir)).Returns(new[] { annaDir });
+        fileSystemMock.Setup(fs => fs.Path.GetFileName(annaDir)).Returns("Anna");
+        fileSystemMock.Setup(fs => fs.Directory.EnumerateFiles(SourceDir, "*.*", SearchOption.AllDirectories)).Returns(new[] { sourceFile });
+        fileSystemMock.Setup(fs => fs.Path.GetFileNameWithoutExtension(sourceFile)).Returns("Photo of Anna");
+        fileSystemMock.Setup(fs => fs.Path.GetFileName(sourceFile)).Returns("Photo of Anna.jpg");
+        fileSystemMock.Setup(fs => fs.Path.Combine(annaDir, "Photo of Anna.jpg")).Returns(destFile);
+        fileSystemMock.Setup(fs => fs.File.Exists(destFile)).Returns(false); // No conflict
+
+        // ** Key step: Configure the Move method to throw an IOException **
+        fileSystemMock.Setup(fs => fs.File.Move(sourceFile, destFile)).Throws(new IOException(exceptionMessage));
+
+        var sorter = new FileSorter(TargetDir, SourceDir, fileSystemMock.Object, uiMock.Object);
+
+        // Act
+        sorter.Run(); // This should not throw an exception due to the try-catch block
+
+        // Assert
+        uiMock.Verify(ui => ui.LogMoveFailure(sourceFile, exceptionMessage), Times.Once, "The move failure should be logged.");
+        uiMock.Verify(ui => ui.LogMove(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never, "A successful move should not be logged.");
+        uiMock.Verify(ui => ui.PrintReport(It.Is<List<(string, string)>>(l => l.Count == 0)), Times.Once, "The final report should show zero moved files.");
+    }
+
+    [Fact]
+    public void Run_WhenSourceDirectoryIsUnreadable_ThrowsAndDoesNotProcessFiles()
+    {
+        // Arrange
+        var fileSystemMock = new Mock<IFileSystem>();
+        var uiMock = new Mock<IUserInterface>();
+        var exceptionMessage = "Access to the path is denied.";
+
+        // Setup target dirs to be scannable
+        fileSystemMock.Setup(fs => fs.Directory.EnumerateDirectories(TargetDir)).Returns(new string[0]);
+
+        // ** Key step: Configure EnumerateFiles to throw an exception **
+        fileSystemMock.Setup(fs => fs.Directory.EnumerateFiles(SourceDir, "*.*", SearchOption.AllDirectories))
+                      .Throws(new UnauthorizedAccessException(exceptionMessage));
+
+        var sorter = new FileSorter(TargetDir, SourceDir, fileSystemMock.Object, uiMock.Object);
+
+        // Act & Assert
+        // The exception should propagate up from Run() because it's a fatal error for the process.
+        var ex = Assert.Throws<UnauthorizedAccessException>(() => sorter.Run());
+        Assert.Equal(exceptionMessage, ex.Message);
+
+        // Verify that no processing or reporting happened after the crash.
+        uiMock.Verify(ui => ui.PrintReport(It.IsAny<List<(string, string)>>()), Times.Never, "The report should not be printed if scanning fails.");
+    }
 }

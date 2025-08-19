@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.IO;
 using System.IO.Abstractions;
 
@@ -10,6 +10,8 @@ public static class Program
 {
     public static int Main(string[] args)
     {
+        var ui = new ConsoleUI();
+
         // Handle command-line flags
         if (args.Length > 0)
         {
@@ -21,20 +23,28 @@ public static class Program
 
             if (args[0] == "--setup-test-data")
             {
-                ConsoleUI.LogInfo("Setting up test data...");
-                var fileSystem = new FileSystem();
-                TestDataGenerator.Setup(fileSystem);
-                ConsoleUI.LogSuccess("Test data setup complete. The 'temp1' and 'temp2' directories have been created.");
-                return 0;
+                try
+                {
+                    ui.LogInfo("Setting up test data...");
+                    var fileSystem = new FileSystem();
+                    TestDataGenerator.Setup(fileSystem, ui);
+                    ui.LogSuccess("Test data setup complete. The 'temp1' and 'temp2' directories have been created.");
+                    return 0;
+                }
+                catch (Exception ex)
+                {
+                    ui.LogError($"Failed to set up test data: {ex.Message}");
+                    return 1;
+                }
             }
         }
 
         // Validate main arguments
         if (args.Length < 2)
         {
-            ConsoleUI.LogError("Error: Please provide two directory paths as arguments.");
+            ui.LogError("Error: Please provide two directory paths as arguments.");
             Console.WriteLine("Usage: file_sort \"<target_folders_path>\" \"<source_files_path>\"");
-            Console.WriteLine("Use 'file_sort --help' for more information.");
+            Console.WriteLine("Use 'file_sort -h' for more information.");
             return 1;
         }
 
@@ -44,26 +54,25 @@ public static class Program
         var realFileSystem = new FileSystem();
         if (!realFileSystem.Directory.Exists(targetDirectory))
         {
-            ConsoleUI.LogError($"Error: Target directory not found at path '{targetDirectory}'");
+            ui.LogError($"Error: Target directory not found at path '{targetDirectory}'");
             return 1;
         }
 
         if (!realFileSystem.Directory.Exists(sourceDirectory))
         {
-            ConsoleUI.LogError($"Error: Source directory not found at path '{sourceDirectory}'");
+            ui.LogError($"Error: Source directory not found at path '{sourceDirectory}'");
             return 1;
         }
 
         try
         {
             // Wire up dependencies for the main application run
-            var ui = new ConsoleUI();
             var sorter = new FileSorter(targetDirectory, sourceDirectory, realFileSystem, ui);
             sorter.Run();
         }
         catch (Exception ex)
         {
-            ConsoleUI.LogError($"An unexpected error occurred: {ex.Message}");
+            ui.LogError($"An unexpected error occurred: {ex.Message}");
             return 1;
         }
 

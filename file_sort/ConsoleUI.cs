@@ -44,15 +44,14 @@ public class ConsoleUI : IUserInterface
 
         while (true)
         {
-            var keyInfo = Console.ReadKey(true);
-            char choice = char.ToUpper(keyInfo.KeyChar);
+            var input = Console.ReadLine()?.Trim().ToUpper();
 
-            if (choice == 'C')
+            if (input == "C")
             {
                 Console.WriteLine("Continue");
                 return true;
             }
-            if (choice == 'A')
+            if (input == "A")
             {
                 Console.WriteLine("Abort");
                 return false;
@@ -71,18 +70,18 @@ public class ConsoleUI : IUserInterface
         while (true)
         {
             Console.Write("    Enter your choice (1-3): ");
-            var keyInfo = Console.ReadKey(true);
-            Console.WriteLine(keyInfo.KeyChar);
+            var input = Console.ReadLine();
 
-            switch (keyInfo.KeyChar)
+            if (!string.IsNullOrEmpty(input))
             {
-                case '1': return ConflictAction.Rename;
-                case '2': return ConflictAction.Skip;
-                case '3': return ConflictAction.RenameAll;
-                default:
-                    LogError("    Invalid choice. Please try again.");
-                    break;
+                switch (input.Trim())
+                {
+                    case "1": return ConflictAction.Rename;
+                    case "2": return ConflictAction.Skip;
+                    case "3": return ConflictAction.RenameAll;
+                }
             }
+            LogError("    Invalid choice. Please try again.");
         }
     }
 
@@ -94,7 +93,7 @@ public class ConsoleUI : IUserInterface
             .ThenBy(m => m.Path)
             .ToList();
 
-        LogWarning($"\n- AMBIGUOUS: File '{Path.GetFileName(sourcePath)}' matches multiple directories.");
+        LogWarning($"  - AMBIGUOUS: File '{Path.GetFileName(sourcePath)}' matches multiple directories.");
         Console.WriteLine("  Please choose a destination:");
         for (int i = 0; i < sortedMatches.Count; i++)
         {
@@ -107,19 +106,23 @@ public class ConsoleUI : IUserInterface
         while (true)
         {
             Console.Write("  Enter your choice: ");
-            var keyInfo = Console.ReadKey(true);
-            Console.WriteLine(keyInfo.KeyChar);
+            var input = Console.ReadLine();
 
-            char choiceChar = char.ToUpper(keyInfo.KeyChar);
-
-            if (choiceChar == 'S') return new AmbiguityChoice(AmbiguityAction.Skip);
-            if (choiceChar == 'A') return new AmbiguityChoice(AmbiguityAction.SkipAll);
-
-            if (char.IsDigit(choiceChar) && int.TryParse(choiceChar.ToString(), out int choice) && choice > 0 && choice <= sortedMatches.Count)
+            if (string.IsNullOrEmpty(input))
             {
-                return new AmbiguityChoice(AmbiguityAction.Select, sortedMatches[choice - 1].Path);
+                LogError("  Invalid choice. Please try again.");
+                continue;
             }
 
+            string choice = input.Trim().ToUpper();
+
+            if (choice == "S") return new AmbiguityChoice(AmbiguityAction.Skip);
+            if (choice == "A") return new AmbiguityChoice(AmbiguityAction.SkipAll);
+
+            if (int.TryParse(choice, out int choiceNum) && choiceNum > 0 && choiceNum <= sortedMatches.Count)
+            {
+                return new AmbiguityChoice(AmbiguityAction.Select, sortedMatches[choiceNum - 1].Path);
+            }
             LogError("  Invalid choice. Please try again.");
         }
     }
@@ -141,24 +144,38 @@ public class ConsoleUI : IUserInterface
         }
     }
 
-    // Logging helpers - static for use before UI is instantiated
-    public static void LogError(string message) { Console.ForegroundColor = ConsoleColor.Red; Console.WriteLine(message); Console.ResetColor(); }
-    public static void LogWarning(string message) { Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine(message); Console.ResetColor(); }
-    public static void LogSuccess(string message) { Console.ForegroundColor = ConsoleColor.Green; Console.WriteLine(message); Console.ResetColor(); }
-    public static void LogInfo(string message) { Console.WriteLine(message); }
-    
-    // Interface implementations for logging
-    void IUserInterface.LogError(string message) => LogError(message);
-    void IUserInterface.LogWarning(string message) => LogWarning(message);
-    void IUserInterface.LogSuccess(string message) => LogSuccess(message);
-    void IUserInterface.LogInfo(string message) => LogInfo(message);
-    public void LogPermanentChoice(string message) { Console.ForegroundColor = ConsoleColor.Cyan; Console.WriteLine($"    -> {message}"); Console.ResetColor(); }
+    // Implementation of IUserInterface logging methods
+    public void LogError(string message)
+    {
+        if (!Console.IsOutputRedirected) Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine(message);
+        if (!Console.IsOutputRedirected) Console.ResetColor();
+    }
+    public void LogWarning(string message)
+    {
+        if (!Console.IsOutputRedirected) Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine(message);
+        if (!Console.IsOutputRedirected) Console.ResetColor();
+    }
+    public void LogSuccess(string message)
+    {
+        if (!Console.IsOutputRedirected) Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine(message);
+        if (!Console.IsOutputRedirected) Console.ResetColor();
+    }
+    public void LogInfo(string message) { Console.WriteLine(message); }
+    public void LogPermanentChoice(string message)
+    {
+        if (!Console.IsOutputRedirected) Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"    -> {message}");
+        if (!Console.IsOutputRedirected) Console.ResetColor();
+    }
     public void LogUserSkip(string sourcePath, bool isPermanent = false)
     {
         var reason = isPermanent ? "User chose to skip all" : "User chose not to move";
         LogWarning($"  - SKIPPED: {reason} '{Path.GetFileName(sourcePath)}'.");
     }
-    public void LogAutoSkip(string sourcePath) => LogWarning($"\n- SKIPPED (auto): File '{Path.GetFileName(sourcePath)}' is ambiguous.");
+    public void LogAutoSkip(string sourcePath) => LogWarning($"  - SKIPPED (auto): File '{Path.GetFileName(sourcePath)}' is ambiguous.");
     public void LogMove(string sourcePath, string destPath, bool isRenamed)
     {
         var action = isRenamed ? "MOVED & RENAMED" : "MOVED";

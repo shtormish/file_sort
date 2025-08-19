@@ -9,7 +9,7 @@ using System.Linq;
 /// </summary>
 public static class TestDataGenerator
 {
-    public static void Setup(IFileSystem fileSystem)
+    public static void Setup(IFileSystem fileSystem, IUserInterface ui)
     {
         var random = new Random();
 
@@ -35,7 +35,7 @@ public static class TestDataGenerator
         }
 
         // --- 1. Create `temp1` with 100 folders ---
-        Console.WriteLine("Creating 'temp1' directory with 100 folders...");
+        ui.LogInfo("Creating 'temp1' directory with 100 folders...");
         fileSystem.Directory.CreateDirectory("temp1");
         var folderNamesForTemp1 = new List<string>();
 
@@ -72,7 +72,7 @@ public static class TestDataGenerator
         }
 
         // --- 2. Create `temp2` with 3000 files in a nested structure ---
-        Console.WriteLine("Creating 'temp2' directory with a nested structure and 3000 files...");
+        ui.LogInfo("Creating 'temp2' directory with a nested structure and 3000 files...");
         fileSystem.Directory.CreateDirectory("temp2");
         var allSourceDirs = new List<string> { "temp2" };
 
@@ -126,7 +126,7 @@ public static class TestDataGenerator
             catch (Exception ex)
             {
                 // Handle cases where filename becomes too long or contains invalid chars
-                ConsoleUI.LogError($"Could not create file '{fullPath}'. Reason: {ex.Message}. Skipping.");
+                ui.LogError($"Could not create file '{fullPath}'. Reason: {ex.Message}. Skipping.");
             }
         }
     }
