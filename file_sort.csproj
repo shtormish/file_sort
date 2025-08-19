@@ -14,4 +14,8 @@
     <SelfContained>false</SelfContained>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.IO.Abstractions" Version="21.0.22" />
+  </ItemGroup>
+
 </Project>
