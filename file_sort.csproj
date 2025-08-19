@@ -7,4 +7,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Enables single-file publishing -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <!-- Ensures the .NET runtime is NOT bundled into the file (it will be required on the target machine) -->
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
 </Project>
