@@ -54,8 +54,13 @@ public static class Program
             return 1;
         }
 
-        var targetDirectory = filteredArgs[0];
-        var sourceDirectory = filteredArgs[1];
+        // Sanitize input paths to handle trailing slashes correctly.
+        // A trailing backslash in a quoted path on Windows (e.g., "C:\MyFolder\") can be
+        // misinterpreted by the command-line parser as an escaped quote, leading to
+        // an "Illegal characters in path" error. Trimming the trailing separator
+        // characters makes the application robust against this common issue.
+        var targetDirectory = filteredArgs[0].TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var sourceDirectory = filteredArgs[1].TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
         var realFileSystem = new FileSystem();
         if (!realFileSystem.Directory.Exists(targetDirectory))
