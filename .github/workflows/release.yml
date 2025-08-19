@@ -1,0 +1,58 @@
+name: .NET Release Publisher
+
+# Этот воркфлоу запускается при отправке тега, соответствующего шаблону 'v*.*.*' (например, v1.0.0)
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    # Мы используем последнюю версию Ubuntu, так как она может собирать проект для всех платформ
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # Определяем, для каких платформ (Runtime Identifiers) мы будем собирать проект
+      - name: Set up build matrix
+        id: matrix
+        run: |
+          echo "rid=[\"win-x64\", \"linux-x64\", \"osx-x64\"]" >> $GITHUB_OUTPUT
+
+      # Собираем приложение для каждой платформы из матрицы
+      - name: Build project for each platform
+        run: |
+          for rid in win-x64 linux-x64 osx-x64; do
+            dotnet publish ./file_sort/file_sort.csproj --configuration Release --runtime $rid --output ./publish/$rid
+          done
+
+      # Упаковываем результаты в архивы
+      - name: Create archives
+        run: |
+          cd ./publish/win-x64 && zip ../../file_sort-win-x64.zip ./* && cd ../..
+          cd ./publish/linux-x64 && tar -czvf ../../file_sort-linux-x64.tar.gz ./* && cd ../..
+          cd ./publish/osx-x64 && tar -czvf ../../file_sort-osx-x64.tar.gz ./* && cd ../..
+
+      # Создаем релиз на GitHub и загружаем архивы
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Имя тега будет использовано для релиза
+          tag_name: ${{ github.ref_name }}
+          # Название релиза
+          name: Release ${{ github.ref_name }}
+          # Описание релиза (можно добавить автоматическую генерацию changelog)
+          body: "New release of File Sorter Utility."
+          # Указываем, какие файлы нужно прикрепить к релизу
+          files: |
+            ./file_sort-win-x64.zip
+            ./file_sort-linux-x64.tar.gz
+            ./file_sort-osx-x64.tar.gz
