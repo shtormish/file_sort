@@ -48,15 +48,19 @@ graph TD
 | **Researchers** | Arrange papers and data by author or study. | `Analysis by Dr. Smith.xlsx` → `\Dr. Smith\` |
 | **Personal Use** | Clean up a messy "Downloads" folder. | `Vacation Photo (Anna).png` → `\Anna\` |
 
-## Prerequisites
+## 📋 Prerequisites
 
 *   .NET 9 SDK or later.
 
-## Usage
+## 🔗 Dependencies
+
+This project has **no external third-party dependencies**. It relies exclusively on the built-in libraries provided with the .NET 9 SDK.
+
+## 🛠️ Usage
 
 This section covers two ways to use the utility: running a pre-compiled release and building from source.
 
-### Command-line Options
+### ⌨️ Command-line Options
 
 | Option | Alias | Description |
 | :--- | :--- | :--- |
@@ -64,7 +68,7 @@ This section covers two ways to use the utility: running a pre-compiled release 
 | `--setup-test-data` | | Generates a set of test folders and files. |
 | `--help` | `-h` | Displays the help screen with usage information. |
 
-### 1. Using a Pre-compiled Release (Recommended)
+### ✅ 1. Using a Pre-compiled Release (Recommended)
 
 This is the easiest way for most users.
 
@@ -83,7 +87,7 @@ This is the easiest way for most users.
 ./file_sort "<path_to_target_folders>" "<path_to_source_files>"
 ```
 
-### 2. Building from Source
+### 🏗️ 2. Building from Source
 
 This method is for developers who want to modify the code.
 
@@ -113,7 +117,7 @@ This method is for developers who want to modify the code.
     dotnet run -- "<path_to_target_folders>" "<path_to_source_files>"
     ```
 
-### Generating Test Data
+### 🎲 Generating Test Data
 
 To create the `temp1` (targets) and `temp2` (sources) directories for testing, run the application with the `--setup-test-data` flag.
 
@@ -123,12 +127,12 @@ To create the `temp1` (targets) and `temp2` (sources) directories for testing, r
 dotnet run -- --setup-test-data
 ```
 
-## Debugging
+## 🐛 Debugging
 
 *   **Paths**: Ensure that all directory paths are correct. If a path contains spaces, it must be enclosed in double quotes (`"`).
 *   **Console Output**: The application provides detailed, real-time feedback in the console for every operation: scanning, moving, skipping, and any conflicts or ambiguities encountered.
 *   **Error Messages**: Clear error messages are printed for common issues such as missing directories or file system access errors (e.g., insufficient permissions).
 
-## Disclaimer
+## ⚠️ Disclaimer
 
-This application was developed with the assistance of the AI coding assistant **Gemini Code Assist**. While the code has been carefully reviewed, users should exercise their own judgment and test the software thoroughly before using it in a production or critical environment.
+Please note that this project was brought to life with the help of Gemini Code Assist, which served as a valuable partner in brainstorming solutions and writing code. While this tool is functional, it should be considered a proof-of-concept and has not been subjected to exhaustive testing across all possible scenarios and edge cases. Therefore, it is strongly recommended that you do not use this utility for sorting critical, sensitive, or irreplaceable data without first thoroughly reviewing the code and conducting your own tests. Think of it as a helpful assistant for casual organization, not a robust archival system for mission-critical files.
