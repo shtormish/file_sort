@@ -1,6 +1,6 @@
 name: .NET Release Publisher
 
-# Этот воркфлоу запускается при отправке тега, соответствующего шаблону 'v*.*.*' (например, v1.0.0)
+# This workflow runs when a tag matching the 'v*.*.*' pattern is pushed (e.g., v1.0.0)
 on:
   push:
     tags:
@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-release:
     name: Build and Release
-    # Мы используем последнюю версию Ubuntu, так как она может собирать проект для всех платформ
+    # We use the latest Ubuntu runner as it can build for all target platforms
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -23,37 +23,33 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      # Определяем, для каких платформ (Runtime Identifiers) мы будем собирать проект
-      - name: Set up build matrix
-        id: matrix
-        run: |
-          echo "rid=[\"win-x64\", \"linux-x64\", \"osx-x64\"]" >> $GITHUB_OUTPUT
-
-      # Собираем приложение для каждой платформы из матрицы
+      # Build the application for each target platform
       - name: Build project for each platform
         run: |
+          # Extract the version number from the tag by removing the 'v' prefix (e.g., 'v1.0.1' becomes '1.0.1')
+          VERSION_NUMBER=${{ github.ref_name#v }}
           for rid in win-x64 linux-x64 osx-x64; do
-            dotnet publish ./file_sort/file_sort.csproj --configuration Release --runtime $rid --output ./publish/$rid
+            dotnet publish ./file_sort/file_sort.csproj --configuration Release --runtime $rid --output ./publish/$rid /p:Version=$VERSION_NUMBER
           done
 
-      # Упаковываем результаты в архивы
+      # Package the results into archives
       - name: Create archives
         run: |
           cd ./publish/win-x64 && zip ../../file_sort-win-x64.zip ./* && cd ../..
           cd ./publish/linux-x64 && tar -czvf ../../file_sort-linux-x64.tar.gz ./* && cd ../..
           cd ./publish/osx-x64 && tar -czvf ../../file_sort-osx-x64.tar.gz ./* && cd ../..
 
-      # Создаем релиз на GitHub и загружаем архивы
+      # Create a GitHub Release and upload the artifacts
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # Имя тега будет использовано для релиза
+          # The tag name will be used for the release
           tag_name: ${{ github.ref_name }}
-          # Название релиза
+          # The name of the release
           name: Release ${{ github.ref_name }}
-          # Включаем автоматическую генерацию release notes на основе коммитов
+          # Enable automatic generation of release notes based on commits
           generate_release_notes: true
-          # Указываем, какие файлы нужно прикрепить к релизу
+          # Specify which files to attach to the release
           files: |
             ./file_sort-win-x64.zip
             ./file_sort-linux-x64.tar.gz
