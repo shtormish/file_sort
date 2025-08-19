@@ -1,10 +1,10 @@
-name: .NET Release Publisher
+name: .NET Release
 
 # This workflow runs when a tag matching the 'v*.*.*' pattern is pushed (e.g., v1.0.0)
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v*.*.*'
 
 jobs:
   build-and-release:
@@ -30,15 +30,16 @@ jobs:
           # The GITHUB_REF_NAME environment variable is automatically provided by the runner.
           VERSION_NUMBER=${GITHUB_REF_NAME#v}
           for rid in win-x64 linux-x64 osx-x64; do
-            dotnet publish ./file_sort/file_sort.csproj --configuration Release --runtime $rid --output ./publish/$rid /p:Version=$VERSION_NUMBER
+            # Publish the application, excluding debug symbols (PDB files) for a cleaner release.
+            dotnet publish ./file_sort/file_sort.csproj --configuration Release --runtime $rid --output ./publish/$rid /p:Version=$VERSION_NUMBER /p:DebugType=None /p:DebugSymbols=false
           done
 
-      # Package the results into archives without changing directories, which is more robust.
+      # Package the results into versioned archives with the version at the end.
       - name: Create release archives
         run: |
-          zip -j ./file_sort-win-x64.zip ./publish/win-x64/*
-          tar -czvf ./file_sort-linux-x64.tar.gz -C ./publish/linux-x64 .
-          tar -czvf ./file_sort-osx-x64.tar.gz -C ./publish/osx-x64 .
+          zip -j ./file_sort-win-x64-${GITHUB_REF_NAME}.zip ./publish/win-x64/*
+          (cd ./publish/linux-x64 && tar -czvf ../../file_sort-linux-x64-${GITHUB_REF_NAME}.tar.gz *)
+          (cd ./publish/osx-x64 && tar -czvf ../../file_sort-osx-x64-${GITHUB_REF_NAME}.tar.gz *)
 
       # Create a GitHub Release and upload the artifacts
       - name: Create GitHub Release
@@ -52,6 +53,6 @@ jobs:
           generate_release_notes: true
           # Specify which files to attach to the release
           files: |
-            ./file_sort-win-x64.zip
-            ./file_sort-linux-x64.tar.gz
-            ./file_sort-osx-x64.tar.gz
+            ./file_sort-win-x64-${{ github.ref_name }}.zip
+            ./file_sort-linux-x64-${{ github.ref_name }}.tar.gz
+            ./file_sort-osx-x64-${{ github.ref_name }}.tar.gz
