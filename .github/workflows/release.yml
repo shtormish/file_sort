@@ -26,18 +26,19 @@ jobs:
       # Build the application for each target platform
       - name: Build project for each platform
         run: |
-          # Extract the version number from the tag by removing the 'v' prefix (e.g., 'v1.0.1' becomes '1.0.1')
-          VERSION_NUMBER=${{ github.ref_name#v }}
+          # Extract the version number from the tag by removing the 'v' prefix using shell parameter expansion.
+          # The GITHUB_REF_NAME environment variable is automatically provided by the runner.
+          VERSION_NUMBER=${GITHUB_REF_NAME#v}
           for rid in win-x64 linux-x64 osx-x64; do
             dotnet publish ./file_sort/file_sort.csproj --configuration Release --runtime $rid --output ./publish/$rid /p:Version=$VERSION_NUMBER
           done
 
-      # Package the results into archives
-      - name: Create archives
+      # Package the results into archives without changing directories, which is more robust.
+      - name: Create release archives
         run: |
-          cd ./publish/win-x64 && zip ../../file_sort-win-x64.zip ./* && cd ../..
-          cd ./publish/linux-x64 && tar -czvf ../../file_sort-linux-x64.tar.gz ./* && cd ../..
-          cd ./publish/osx-x64 && tar -czvf ../../file_sort-osx-x64.tar.gz ./* && cd ../..
+          zip -j ./file_sort-win-x64.zip ./publish/win-x64/*
+          tar -czvf ./file_sort-linux-x64.tar.gz -C ./publish/linux-x64 .
+          tar -czvf ./file_sort-osx-x64.tar.gz -C ./publish/osx-x64 .
 
       # Create a GitHub Release and upload the artifacts
       - name: Create GitHub Release
