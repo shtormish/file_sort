@@ -355,7 +355,7 @@ public class FileSorterTests
         sorter.Run(); // This should not throw an exception due to the try-catch block
 
         // Assert
-        uiMock.Verify(ui => ui.LogMoveFailure(sourceFile, exceptionMessage), Times.Once, "The move failure should be logged.");
+        uiMock.Verify(ui => ui.LogMoveFailure(sourceFile, It.Is<IOException>(ex => ex.Message == exceptionMessage)), Times.Once, "The move failure should be logged.");
         uiMock.Verify(ui => ui.LogMove(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never, "A successful move should not be logged.");
         uiMock.Verify(ui => ui.PrintReport(It.Is<List<(string, string)>>(l => l.Count == 0)), Times.Once, "The final report should show zero moved files.");
     }
@@ -384,5 +384,52 @@ public class FileSorterTests
 
         // Verify that no processing or reporting happened after the crash.
         uiMock.Verify(ui => ui.PrintReport(It.IsAny<List<(string, string)>>()), Times.Never, "The report should not be printed if scanning fails.");
+    }
+
+    [Fact]
+    public void Run_WithSpecialCharactersInFolderName_MatchesCorrectly()
+    {
+        // Arrange
+        var folderName = "Project Alpha (Team & Co.!)";
+        var specialCharDir = _fileSystem.Path.Combine(TargetDir, folderName);
+        _fileSystem.AddDirectory(specialCharDir);
+
+        var sourceFileName = $"Status Report for {folderName}.docx";
+        var sourceFile = _fileSystem.Path.Combine(SourceDir, sourceFileName);
+        _fileSystem.AddFile(sourceFile, new MockFileData("content"));
+
+        // Act
+        _sorter.Run();
+
+        // Assert
+        var expectedDestFile = _fileSystem.Path.Combine(specialCharDir, sourceFileName);
+        Assert.True(_fileSystem.File.Exists(expectedDestFile), "File should be moved to the folder with special characters.");
+        Assert.False(_fileSystem.File.Exists(sourceFile), "Source file should be removed.");
+        _uiMock.Verify(ui => ui.LogMove(sourceFile, expectedDestFile, false), Times.Once);
+    }
+
+    [Fact]
+    public void Run_WithSubstringFolderName_SelectsLongestAndMostSpecificMatch()
+    {
+        // Arrange
+        var shortNameDir = _fileSystem.Path.Combine(TargetDir, "Project");
+        var longNameDir = _fileSystem.Path.Combine(TargetDir, "Project X");
+        _fileSystem.AddDirectory(shortNameDir);
+        _fileSystem.AddDirectory(longNameDir);
+
+        var sourceFileName = "Status Report for Project X.docx";
+        var sourceFile = _fileSystem.Path.Combine(SourceDir, sourceFileName);
+        _fileSystem.AddFile(sourceFile, new MockFileData("content"));
+
+        // Act
+        _sorter.Run();
+
+        // Assert
+        var expectedDestFile = _fileSystem.Path.Combine(longNameDir, sourceFileName);
+
+        // It should move to the more specific folder and not prompt for ambiguity.
+        Assert.True(_fileSystem.File.Exists(expectedDestFile), "File should be moved to the more specific 'Project X' folder.");
+        Assert.False(_fileSystem.File.Exists(_fileSystem.Path.Combine(shortNameDir, sourceFileName)), "File should not be moved to the less specific 'Project' folder.");
+        _uiMock.Verify(ui => ui.ResolveAmbiguity(It.IsAny<string>(), It.IsAny<List<MatchInfo>>(), It.IsAny<string>()), Times.Never, "Ambiguity resolution should not be triggered for a clear best match.");
     }
 }

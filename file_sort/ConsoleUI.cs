@@ -9,6 +9,13 @@ using System.Reflection;
 /// </summary>
 public class ConsoleUI : IUserInterface
 {
+    private readonly bool _isVerbose;
+
+    public ConsoleUI(bool isVerbose = false)
+    {
+        _isVerbose = isVerbose;
+    }
+
     public static void ShowHelp()
     {
         var version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0";
@@ -145,11 +152,18 @@ public class ConsoleUI : IUserInterface
     }
 
     // Implementation of IUserInterface logging methods
-    public void LogError(string message)
+    public void LogError(string message, Exception? ex = null)
     {
         if (!Console.IsOutputRedirected) Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine(message);
         if (!Console.IsOutputRedirected) Console.ResetColor();
+
+        if (_isVerbose && ex != null)
+        {
+            if (!Console.IsOutputRedirected) Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"\n--- Verbose Error Details ---\n{ex}\n-----------------------------");
+            if (!Console.IsOutputRedirected) Console.ResetColor();
+        }
     }
     public void LogWarning(string message)
     {
@@ -182,5 +196,5 @@ public class ConsoleUI : IUserInterface
         var destDir = Path.GetDirectoryName(destPath);
         LogSuccess($"  - {action}: '{Path.GetFileName(sourcePath)}' to '{Path.GetFileName(destPath)}' in '{destDir}'");
     }
-    public void LogMoveFailure(string sourcePath, string reason) => LogError($"  - FAILED to move '{sourcePath}': {reason}");
+    public void LogMoveFailure(string sourcePath, Exception ex) => LogError($"  - FAILED to move '{Path.GetFileName(sourcePath)}'. Reason: {ex.Message}", ex);
 }

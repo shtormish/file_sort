@@ -126,7 +126,7 @@ public static class TestDataGenerator
             catch (Exception ex)
             {
                 // Handle cases where filename becomes too long or contains invalid chars
-                ui.LogError($"Could not create file '{fullPath}'. Reason: {ex.Message}. Skipping.");
+                ui.LogError($"Could not create file '{fullPath}'. Skipping.", ex);
             }
         }
     }

@@ -16,6 +16,8 @@ public class FileSorter
     private readonly Dictionary<string, List<string>> _directoryNamesMap = new();
     private readonly List<(string SourceFile, string FinalDestPath)> _movedFilesLog = new();
 
+    private record FileMatchResult(string FilePath, List<MatchInfo> BestMatches);
+
     private bool _renameAllConflicts = false;
     private bool _skipAllAmbiguous = false;
 
@@ -95,21 +97,39 @@ public class FileSorter
     private void ProcessSourceFiles()
     {
         _ui.LogInfo($"\nScanning source files in: {_sourceDirectory}");
-        var sourceFiles = _fileSystem.Directory.EnumerateFiles(_sourceDirectory, "*.*", SearchOption.AllDirectories);
+        var sourceFiles = _fileSystem.Directory.EnumerateFiles(_sourceDirectory, "*.*", SearchOption.AllDirectories).ToList();
 
-        _ui.LogInfo($"Found {sourceFiles.Count()} files to process.");
+        _ui.LogInfo($"Found {sourceFiles.Count} files to process. Analyzing matches...");
+
+        // Use PLINQ to find all matches in parallel. This is the CPU-intensive part.
+        var fileMatchResults = sourceFiles.AsParallel()
+            .Select(FindBestMatchesForFile)
+            .Where(result => result.BestMatches.Any())
+            .ToList();
+
+        _ui.LogInfo($"Found {fileMatchResults.Count} files with potential matches.");
         _ui.LogInfo("\nStarting file processing...");
 
-        foreach (var filePath in sourceFiles)
+        // Process the results sequentially to handle UI and state changes safely.
+        foreach (var result in fileMatchResults)
         {
-            ProcessSingleFile(filePath);
+            if (result.BestMatches.Count == 1)
+            {
+                // A single, unambiguous best match was found.
+                MoveFileWithConflictResolution(result.FilePath, result.BestMatches.First().Path);
+            }
+            else // > 1
+            {
+                // Ambiguity remains.
+                HandleAmbiguousFile(result.FilePath, result.BestMatches);
+            }
         }
     }
 
     /// <summary>
-    /// Finds matches for a single file and determines the correct action.
+    /// Finds the best matching directories for a single file. This method is thread-safe.
     /// </summary>
-    private void ProcessSingleFile(string sourceFilePath)
+    private FileMatchResult FindBestMatchesForFile(string sourceFilePath)
     {
         var fileNameWithoutExt = _fileSystem.Path.GetFileNameWithoutExtension(sourceFilePath);
 
@@ -119,10 +139,10 @@ public class FileSorter
                 .Select(nameVariant => new MatchInfo(dirEntry.Key, nameVariant)))
             .ToList();
 
-        // If no matches, do nothing.
+        // If no matches, return an empty result.
         if (!allPossibleMatches.Any())
         {
-            return;
+            return new FileMatchResult(sourceFilePath, new List<MatchInfo>());
         }
 
         // Find the length of the longest (most specific) match.
@@ -137,17 +157,7 @@ public class FileSorter
             .Select(g => g.First())
             .ToList();
 
-        if (uniqueBestMatchingDirs.Count == 1)
-        {
-            // A single, unambiguous best match was found.
-            MoveFileWithConflictResolution(sourceFilePath, uniqueBestMatchingDirs.First().Path);
-        }
-        else if (uniqueBestMatchingDirs.Count > 1)
-        {
-            // Ambiguity remains (e.g., two folders matched with the same best length string).
-            // Pass only the best-matching candidates to the user.
-            HandleAmbiguousFile(sourceFilePath, uniqueBestMatchingDirs);
-        }
+        return new FileMatchResult(sourceFilePath, uniqueBestMatchingDirs);
     }
 
     /// <summary>
@@ -258,7 +268,7 @@ public class FileSorter
         }
         catch (Exception ex)
         {
-            _ui.LogMoveFailure(sourcePath, ex.Message);
+            _ui.LogMoveFailure(sourcePath, ex);
         }
     }
 }

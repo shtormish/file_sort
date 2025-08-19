@@ -10,7 +10,7 @@ public interface IUserInterface
     ConflictAction ResolveConflict(string fileName, string destinationDir);
     AmbiguityChoice ResolveAmbiguity(string sourcePath, List<MatchInfo> matches, string rootDir);
     void PrintReport(List<(string SourceFile, string FinalDestPath)> movedFiles);
-    void LogError(string message);
+    void LogError(string message, Exception? ex = null);
     void LogWarning(string message);
     void LogSuccess(string message);
     void LogInfo(string message);
@@ -18,5 +18,5 @@ public interface IUserInterface
     void LogUserSkip(string sourcePath, bool isPermanent = false);
     void LogAutoSkip(string sourcePath);
     void LogMove(string sourcePath, string destPath, bool isRenamed);
-    void LogMoveFailure(string sourcePath, string reason);
+    void LogMoveFailure(string sourcePath, Exception ex);
 }

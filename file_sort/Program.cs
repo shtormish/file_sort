@@ -1,6 +1,7 @@
 ﻿﻿﻿﻿using System;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 
 /// <summary>
 /// Main entry point for the application.
@@ -10,18 +11,23 @@ public static class Program
 {
     public static int Main(string[] args)
     {
-        var ui = new ConsoleUI();
+        // Check for verbose flag anywhere in the arguments
+        bool isVerbose = args.Contains("--verbose");
+        // Filter out the verbose flag so it doesn't interfere with path arguments
+        var filteredArgs = args.Where(a => a != "--verbose").ToArray();
+
+        var ui = new ConsoleUI(isVerbose);
 
         // Handle command-line flags
-        if (args.Length > 0)
+        if (filteredArgs.Length > 0)
         {
-            if (args[0] == "-h" || args[0] == "--help")
+            if (filteredArgs[0] == "-h" || filteredArgs[0] == "--help")
             {
                 ConsoleUI.ShowHelp();
                 return 0;
             }
 
-            if (args[0] == "--setup-test-data")
+            if (filteredArgs[0] == "--setup-test-data")
             {
                 try
                 {
@@ -33,14 +39,14 @@ public static class Program
                 }
                 catch (Exception ex)
                 {
-                    ui.LogError($"Failed to set up test data: {ex.Message}");
+                    ui.LogError("Failed to set up test data.", ex);
                     return 1;
                 }
             }
         }
 
         // Validate main arguments
-        if (args.Length < 2)
+        if (filteredArgs.Length < 2)
         {
             ui.LogError("Error: Please provide two directory paths as arguments.");
             Console.WriteLine("Usage: file_sort \"<target_folders_path>\" \"<source_files_path>\"");
@@ -48,19 +54,19 @@ public static class Program
             return 1;
         }
 
-        var targetDirectory = args[0];
-        var sourceDirectory = args[1];
+        var targetDirectory = filteredArgs[0];
+        var sourceDirectory = filteredArgs[1];
 
         var realFileSystem = new FileSystem();
         if (!realFileSystem.Directory.Exists(targetDirectory))
         {
-            ui.LogError($"Error: Target directory not found at path '{targetDirectory}'");
+            ui.LogError($"Error: Target directory not found at path '{targetDirectory}'.");
             return 1;
         }
 
         if (!realFileSystem.Directory.Exists(sourceDirectory))
         {
-            ui.LogError($"Error: Source directory not found at path '{sourceDirectory}'");
+            ui.LogError($"Error: Source directory not found at path '{sourceDirectory}'.");
             return 1;
         }
 
@@ -72,7 +78,7 @@ public static class Program
         }
         catch (Exception ex)
         {
-            ui.LogError($"An unexpected error occurred: {ex.Message}");
+            ui.LogError("An unexpected error occurred.", ex);
             return 1;
         }
 
