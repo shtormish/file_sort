@@ -28,8 +28,14 @@ echo.
 
 echo [4/6] Preparing to tag new version...
 git fetch --tags --quiet
-for /f "tokens=*" %%a in ('git describe --tags --abbrev=0 2^>nul') do set LATEST_TAG=%%a
-
+rem Find the latest tag by sorting all tags semantically.
+rem This is more reliable than 'git describe', which depends on the current commit's history.
+set "LATEST_TAG="
+for /f "tokens=*" %%a in ('git tag -l --sort=-v:refname "v*" 2^>nul') do (
+    set "LATEST_TAG=%%a"
+    goto :found_tag
+)
+:found_tag
 if defined LATEST_TAG (
     echo Latest version on server is: %LATEST_TAG%
 ) else (
