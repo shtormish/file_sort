@@ -113,26 +113,40 @@ public class FileSorter
     {
         var fileNameWithoutExt = _fileSystem.Path.GetFileNameWithoutExtension(sourceFilePath);
 
-        var matches = _directoryNamesMap
-            .Select(dirEntry => new
-            {
-                Path = dirEntry.Key,
-                BestMatch = dirEntry.Value
-                    .Where(nameVariant => fileNameWithoutExt.Contains(nameVariant, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(nv => nv.Length)
-                    .FirstOrDefault()
-            })
-            .Where(m => m.BestMatch != null)
-            .Select(m => new MatchInfo(m.Path, m.BestMatch!))
+        var allPossibleMatches = _directoryNamesMap
+            .SelectMany(dirEntry => dirEntry.Value
+                .Where(nameVariant => fileNameWithoutExt.Contains(nameVariant, StringComparison.OrdinalIgnoreCase))
+                .Select(nameVariant => new MatchInfo(dirEntry.Key, nameVariant)))
             .ToList();
 
-        if (matches.Count == 1)
+        // If no matches, do nothing.
+        if (!allPossibleMatches.Any())
         {
-            MoveFileWithConflictResolution(sourceFilePath, matches.First().Path);
+            return;
         }
-        else if (matches.Count > 1)
+
+        // Find the length of the longest (most specific) match.
+        var maxLength = allPossibleMatches.Max(m => m.BestMatch.Length);
+
+        // Filter to get only the best matches.
+        var bestMatches = allPossibleMatches.Where(m => m.BestMatch.Length == maxLength).ToList();
+
+        // Get a list of unique directories from the best matches.
+        var uniqueBestMatchingDirs = bestMatches
+            .GroupBy(m => m.Path)
+            .Select(g => g.First())
+            .ToList();
+
+        if (uniqueBestMatchingDirs.Count == 1)
         {
-            HandleAmbiguousFile(sourceFilePath, matches);
+            // A single, unambiguous best match was found.
+            MoveFileWithConflictResolution(sourceFilePath, uniqueBestMatchingDirs.First().Path);
+        }
+        else if (uniqueBestMatchingDirs.Count > 1)
+        {
+            // Ambiguity remains (e.g., two folders matched with the same best length string).
+            // Pass only the best-matching candidates to the user.
+            HandleAmbiguousFile(sourceFilePath, uniqueBestMatchingDirs);
         }
     }
 
